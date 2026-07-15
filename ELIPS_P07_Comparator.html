@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELIPS P07 · Summary ↔ Upload Comparator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+    --ink:#12181f;
+    --paper:#f5f3ee;
+    --panel:#ffffff;
+    --line:#dcd7cb;
+    --muted:#6b6357;
+    --accent:#c0392b;
+    --accent-ink:#7a1f16;
+    --ok:#1f7a4d;
+    --ok-bg:#e6f4ec;
+    --warn:#a86a00;
+    --warn-bg:#fbf0dc;
+    --bad:#a4231a;
+    --bad-bg:#fbe8e5;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.45;}
+  .wrap{max-width:1360px; margin:0 auto; padding:28px 24px 80px;}
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:3px solid var(--ink); padding-bottom:14px; margin-bottom:22px; flex-wrap:wrap; gap:8px;
+  }
+  header.top h1{font-size:20px; letter-spacing:0.02em; margin:0; font-weight:800;}
+  header.top h1 span{color:var(--accent);}
+  header.top .tag{font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;}
+
+  .uploader{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; align-items:start;}
+  .upload-stack{display:flex; flex-direction:column;}
+  .upload-zone{
+    background:var(--panel); border:1.5px dashed var(--line); border-radius:4px;
+    padding:12px 16px; position:relative; margin-bottom:8px;
+  }
+  .upload-zone.filled{border-style:solid; border-color:var(--ok);}
+  .upload-zone .zone-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .upload-zone .zone-title{font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);}
+  .upload-zone .zone-remove{
+    font-size:11px; font-weight:700; color:var(--accent); background:none; border:none; padding:0 2px; cursor:pointer;
+  }
+  .drop{background:var(--panel); border:1.5px dashed var(--line); border-radius:4px; padding:16px 18px; position:relative;}
+  .drop.filled{border-style:solid; border-color:var(--ok);}
+  .drop .lbl{font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:6px;}
+  .drop .fname{font-family:var(--mono); font-size:12.5px; color:var(--ink); word-break:break-all;}
+  .drop input[type=file]{margin-top:8px; font-size:12.5px; width:100%;}
+  .drop .stat{font-size:12px; color:var(--ok); margin-top:6px; font-weight:600;}
+
+  .toolbar{display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap;}
+  button{
+    font-family:var(--sans); font-weight:700; font-size:12.5px; letter-spacing:0.02em;
+    border:1.5px solid var(--ink); background:var(--ink); color:var(--paper);
+    padding:9px 16px; border-radius:3px; cursor:pointer;
+  }
+  button.secondary{background:transparent; color:var(--ink);}
+  button.accent{background:var(--accent); border-color:var(--accent-ink); color:#fff;}
+  button:disabled{opacity:0.35; cursor:not-allowed;}
+  button:hover:not(:disabled){filter:brightness(1.08);}
+
+  .tabs{display:flex; gap:2px; margin-bottom:18px; border-bottom:1.5px solid var(--line);}
+  .tab-btn{
+    background:transparent; border:none; color:var(--muted); font-weight:700; font-size:12.5px;
+    padding:9px 4px; margin-right:26px; border-radius:0; border-bottom:3px solid transparent; letter-spacing:0.01em;
+  }
+  .tab-btn.active{color:var(--ink); border-bottom-color:var(--accent);}
+  .tab-btn:hover{color:var(--ink);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+
+  .filter-bar{
+    display:flex; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;
+    background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 14px;
+  }
+  .filter-bar .fld{display:flex; align-items:center; gap:8px;}
+  .filter-bar label{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);}
+  .filter-bar input[type=text]{
+    font-family:var(--mono); font-size:12.5px; padding:6px 10px; border:1px solid var(--line); border-radius:4px; width:150px;
+  }
+  .filter-bar select{font-family:var(--sans); font-size:12.5px; padding:6px 10px; border:1px solid var(--line); border-radius:4px; background:#fff;}
+  .filter-bar .count{font-size:11.5px; color:var(--muted); margin-left:auto; font-family:var(--mono);}
+  .filter-bar .clear{font-size:11px; color:var(--accent); font-weight:700; cursor:pointer; background:none; border:none; padding:0;}
+  .chip-group{display:flex; gap:4px; background:#f2efe6; border-radius:6px; padding:3px;}
+  .chip{font-family:var(--sans); font-size:11.5px; font-weight:700; padding:5px 12px; border-radius:5px; border:none; background:transparent; color:var(--muted); cursor:pointer;}
+  .chip.active{background:var(--ink); color:var(--paper);}
+  .chip.active.st-missing{background:var(--warn);}
+  .chip.active.st-mismatch{background:var(--bad);}
+  .chip.active.st-changed{background:#2a3f7a;}
+
+  .summary-cards{display:flex; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px 18px; min-width:110px; box-shadow:0 1px 2px rgba(18,24,31,0.04);}
+  .card .n{font-family:var(--mono); font-size:24px; font-weight:700; line-height:1.1;}
+  .card .l{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-top:2px;}
+  .card.ok .n{color:var(--ok);}
+  .card.warn .n{color:var(--warn);}
+  .card.bad .n{color:var(--bad);}
+
+  .legend{font-size:11.5px; color:var(--muted); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:9px 14px; margin-bottom:16px;}
+  .legend b{color:var(--ink);}
+  .legend .dot{display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:5px; vertical-align:middle;}
+
+  /* ---- Tab 1: route summary table ---- */
+  table.main{width:100%; border-collapse:separate; border-spacing:0; background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(18,24,31,0.05);}
+  table.main th{
+    text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--muted); background:#faf8f3; border-bottom:1.5px solid var(--line);
+    padding:10px 12px; white-space:nowrap; font-weight:700;
+  }
+  table.main td{padding:11px 12px; border-bottom:1px solid var(--line); font-size:12.5px; vertical-align:middle;}
+  table.main tbody tr.data-row{transition:background 0.12s ease;}
+  table.main tbody tr.data-row:hover{background:#faf8f2;}
+  table.main tbody tr.data-row.is-open{background:#f6f2e8;}
+  table.main tbody tr.is-hidden{display:none;}
+  table.main tbody tr:last-child td{border-bottom:none;}
+  .num{font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums;}
+  .route-cell{font-family:var(--mono); font-weight:700; letter-spacing:0.01em;}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; padding:3px 10px 3px 8px; border-radius:20px; letter-spacing:0.02em;}
+  .badge::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor; display:inline-block;}
+  .badge.match{background:var(--ok-bg); color:var(--ok);}
+  .badge.missing{background:var(--warn-bg); color:var(--warn);}
+  .badge.mismatch{background:var(--bad-bg); color:var(--bad);}
+  .badge.changed{background:#e7eafb; color:#2a3f7a;}
+  .badge.no-changed{background:#f2efe6; color:var(--muted);}
+  .expand-btn{
+    background:none; border:1.5px solid var(--line); color:var(--ink); font-size:11px;
+    padding:5px 12px; border-radius:20px; font-weight:700; display:inline-flex; align-items:center; gap:6px;
+    transition:border-color .12s ease, background .12s ease;
+  }
+  .expand-btn:hover{border-color:var(--ink); background:#fff;}
+  .expand-btn .chev{display:inline-block; transition:transform .15s ease; font-size:9px;}
+  .expand-btn.is-open .chev{transform:rotate(90deg);}
+  .expand-btn.is-open{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+  tr.detail-row{display:none;}
+  tr.detail-row.open{display:table-row;}
+  tr.detail-row td{background:#fbfaf6; padding:0; border-bottom:1px solid var(--line);}
+  .detail-card{padding:18px 20px 20px; border-left:3px solid var(--ink); margin:2px 10px 10px;}
+
+  .note{
+    display:flex; gap:10px; align-items:flex-start;
+    font-size:12px; color:var(--ink); background:#fff; border:1px solid var(--line); border-left:4px solid var(--warn);
+    padding:10px 14px; border-radius:5px; margin-bottom:14px;
+  }
+  .note b{font-weight:700;}
+  .note.tone-ok{border-left-color:var(--ok);}
+  .note.tone-bad{border-left-color:var(--bad);}
+  .note .note-icon{font-size:14px; line-height:1.3; flex-shrink:0;}
+
+  .cyc-wrap{border:1px solid var(--line); border-radius:8px; overflow-x:auto;}
+  table.cyc{width:100%; border-collapse:collapse; font-size:12.5px; min-width:760px;}
+  table.cyc th{
+    background:#f2efe6; color:var(--muted); font-size:9.5px; text-transform:uppercase; letter-spacing:0.04em;
+    padding:8px 8px; text-align:center; font-weight:700; border-bottom:1.5px solid var(--line); white-space:nowrap;
+  }
+  table.cyc td{padding:7px 8px; text-align:center; border-bottom:1px solid var(--line); font-family:var(--mono); color:var(--ink);}
+  table.cyc tbody tr:last-child td{border-bottom:none;}
+  table.cyc tbody tr:nth-child(even){background:#fdfcf9;}
+  table.cyc tbody tr:hover{background:#f6f2e8;}
+  .shift-pill{
+    display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+    border-radius:50%; font-size:10.5px; font-weight:700; font-family:var(--sans);
+  }
+  .shift-pill.day{background:#fdecb0; color:#7a5400;}
+  .shift-pill.night{background:#d6def5; color:#2a3f7a;}
+  .cost-1{color:var(--ok); font-weight:700;}
+  .cost-0{color:#c9c2b3;}
+  table.cyc input[type=checkbox]{transform:scale(1.2); cursor:pointer; accent-color:var(--ok);}
+  table.cyc input[type=text]{width:80px; font-family:var(--mono); font-size:11.5px; padding:4px 6px; border:1px solid var(--line); border-radius:4px; text-align:center;}
+  table.cyc input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+
+  .sum-check{font-size:11.5px; margin-top:12px; font-family:var(--mono); font-weight:600; padding:6px 0;}
+  .sum-check.ok{color:var(--ok);}
+  .sum-check.bad{color:var(--bad);}
+
+  /* ---- Tab 2: flat cycle grid ---- */
+  .grid-wrap{border:1px solid var(--line); border-radius:8px; overflow:auto; background:var(--panel); box-shadow:0 1px 3px rgba(18,24,31,0.05); max-height:74vh;}
+  table.grid{width:100%; border-collapse:separate; border-spacing:0; font-size:12.5px; min-width:920px;}
+  table.grid thead th{
+    position:sticky; top:0; z-index:2; text-align:center; font-size:10px; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--muted); background:#faf8f3; border-bottom:1.5px solid var(--line); padding:9px 10px; white-space:nowrap; font-weight:700;
+  }
+  table.grid td{padding:7px 10px; border-bottom:1px solid var(--line); font-family:var(--mono); text-align:center; white-space:nowrap;}
+  table.grid td.left{text-align:left; font-weight:700;}
+  table.grid tbody tr{border-left:3px solid transparent;}
+  table.grid tbody tr.status-match{border-left-color:var(--ok);}
+  table.grid tbody tr.status-mismatch{border-left-color:var(--bad); background:#fdf6f5;}
+  table.grid tbody tr.status-missing{border-left-color:var(--warn); background:#fefaf1;}
+  table.grid tbody tr:hover{filter:brightness(0.98);}
+  table.grid tbody tr.is-hidden{display:none;}
+  table.grid input[type=checkbox]{transform:scale(1.15); cursor:pointer; accent-color:var(--ok);}
+  table.grid input[type=text]{width:78px; font-family:var(--mono); font-size:11px; padding:3px 5px; border:1px solid var(--line); border-radius:4px; text-align:center;}
+  table.grid input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  .mini-badge{display:inline-block; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:6px; letter-spacing:0.02em; vertical-align:middle;}
+  .mini-badge.missing{background:var(--warn-bg); color:var(--warn);}
+  .mini-badge.mismatch{background:var(--bad-bg); color:var(--bad);}
+
+  footer{margin-top:30px; font-size:11px; color:var(--muted); text-align:center;}
+  .empty{padding:60px 20px; text-align:center; color:var(--muted); font-size:13px; background:var(--panel); border:1px solid var(--line); border-radius:8px;}
+
+  /* ---- Tab 3: LP summary charts ---- */
+  table.lp{width:100%; border-collapse:separate; border-spacing:0; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(18,24,31,0.05);}
+  table.lp th{
+    text-align:right; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);
+    background:#faf8f3; border-bottom:1.5px solid var(--line); padding:9px 12px; font-weight:700;
+  }
+  table.lp th:first-child{text-align:left;}
+  table.lp td{padding:9px 12px; border-bottom:1px solid var(--line); font-size:12.5px; text-align:right; font-family:var(--mono);}
+  table.lp td:first-child{text-align:left; font-weight:700; font-family:var(--sans);}
+  table.lp tbody tr:last-child td{border-bottom:none;}
+  table.lp tfoot td{font-weight:700; background:#faf8f3; border-top:2px solid var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>ELIPS P07 <span>·</span> Summary ↔ Upload Comparator</h1>
+    <div class="tag">Cycle-level breakdown &amp; resource assignment check</div>
+  </header>
+
+  <div class="uploader">
+    <div class="drop" id="dropSummary">
+      <div class="lbl">1 · Summary LP Resource file</div>
+      <div class="fname" id="fnameSummary">No file selected</div>
+      <input type="file" id="fileSummary" accept=".xlsx,.xls">
+      <div class="stat" id="statSummary"></div>
+    </div>
+    <div class="upload-stack">
+      <div class="lbl" style="margin-bottom:8px;">2 · Upload ELIPS file(s) (original format)</div>
+      <div id="uploadZones"></div>
+      <button type="button" class="secondary" id="btnAddUpload" style="margin-top:2px;">+ Add another upload file</button>
+      <div class="stat" id="statUploadTotal" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="btnRun" disabled>Compare &amp; Breakdown</button>
+    <button class="accent" id="btnExport" disabled>Download Upload-format (.xlsx)</button>
+  </div>
+
+  <div class="note tone-ok" id="rerunNote" style="display:none;"></div>
+
+  <div id="cards" class="summary-cards"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtn1" onclick="switchTab(1)">Route Summary</button>
+    <button class="tab-btn" id="tabBtn2" onclick="switchTab(2)">Cycle Grid (Upload format)</button>
+    <button class="tab-btn" id="tabBtn3" onclick="switchTab(3)">LP Summary</button>
+    <button class="tab-btn" id="tabBtn4" onclick="switchTab(4)">Recalculated Summary</button>
+  </div>
+
+  <!-- ===== TAB 1: ROUTE SUMMARY ===== -->
+  <div id="tabPane1" class="tab-pane active">
+    <div class="filter-bar" id="filterBar1" style="display:none;">
+      <div class="fld"><label>Search Route</label><input type="text" id="searchRoute1" placeholder="e.g. RC01"></div>
+      <div class="fld"><label>Filter LP</label><select id="filterLP1"><option value="">All LP</option></select></div>
+      <div class="fld">
+        <label>Status</label>
+        <div class="chip-group" data-group="1">
+          <button class="chip active" data-status="all">All</button>
+          <button class="chip st-missing" data-status="missing">Missing</button>
+          <button class="chip st-mismatch" data-status="mismatch">Mismatch</button>
+        </div>
+      </div>
+      <button class="clear" id="btnClearFilter1">Clear filters</button>
+      <div class="count" id="filterCount1"></div>
+    </div>
+
+    <div class="legend" id="legend1" style="display:none;">
+      <b>Ttl Calcu Upload Truck</b> (Σ Vehicle) = sum of VEHICLE_COST flags across all cycle rows of that route in the Upload file — should equal <b>Truck Qty</b> from the Summary file.
+      &nbsp;·&nbsp;
+      <b>Ttl Calcu Upload Driver</b> (Σ Driver) = sum of DRIVER_COST flags across all cycle rows — should equal <b>Driver Qty</b>.
+    </div>
+
+    <div id="tableHost1">
+      <div class="empty">Upload both files above, then click "Compare &amp; Breakdown".</div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 2: CYCLE GRID ===== -->
+  <div id="tabPane2" class="tab-pane">
+    <div class="filter-bar" id="filterBar2" style="display:none;">
+      <div class="fld"><label>Search Route</label><input type="text" id="searchRoute2" placeholder="e.g. RC01"></div>
+      <div class="fld"><label>Search Cycle/Rit</label><input type="text" id="searchCycle2" placeholder="e.g. 3" style="width:90px;"></div>
+      <div class="fld"><label>Filter LP</label><select id="filterLP2"><option value="">All LP</option></select></div>
+      <button class="clear" id="btnClearFilter2">Clear filters</button>
+      <div class="count" id="filterCount2"></div>
+    </div>
+
+    <div class="legend" id="legend2" style="display:none;">
+      Pure cycle-level data as it exists in the Upload file — no comparison, no auto-generated rows. Routes not yet in the Upload file won't appear here (see the Route Summary tab for those).
+    </div>
+
+    <div id="tableHost2">
+      <div class="empty">Upload the Upload ELIPS file above, then click "Compare &amp; Breakdown".</div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 3: LP SUMMARY ===== -->
+  <div id="tabPane3" class="tab-pane">
+    <div class="legend" id="legend3" style="display:none;">
+      Totals per LP, computed from the Summary file: <b>Total Delivery</b> = sum of Del Freq, <b>Total Truck</b> = sum of Truck Qty, <b>Total Driver</b> = sum of Driver Qty across all routes for that LP.
+    </div>
+    <div id="lpSummaryHost">
+      <div class="empty">Upload the Summary file above, then click "Compare &amp; Breakdown".</div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 4: RECALCULATED SUMMARY (same grid as Route Summary, but from the latest upload) ===== -->
+  <div id="tabPane4" class="tab-pane">
+    <div class="filter-bar" id="filterBar4" style="display:none;">
+      <div class="fld"><label>Search Route</label><input type="text" id="searchRoute4" placeholder="e.g. RC01"></div>
+      <div class="fld"><label>Filter LP</label><select id="filterLP4"><option value="">All LP</option></select></div>
+      <div class="fld">
+        <label>Status</label>
+        <div class="chip-group" data-group="4">
+          <button class="chip active" data-status="all">All</button>
+          <button class="chip st-missing" data-status="missing">Missing</button>
+          <button class="chip st-changed" data-status="changed">Changed</button>
+        </div>
+      </div>
+      <button class="clear" id="btnClearFilter4">Clear filters</button>
+      <div class="count" id="filterCount4"></div>
+    </div>
+
+    <div class="legend" id="legend4" style="display:none;">
+      Same layout as <b>Route Summary</b>, but recalculated from the <b>latest</b> uploaded file(s) instead of the first upload
+      (Del Freq target column and the Mismatch status are dropped here since they aren't the point of this view).
+      Every time you re-upload (2nd, 3rd, ...) and click "Compare &amp; Breakdown" again, this grid is rebuilt from scratch against that latest data —
+      Route Summary above stays frozen on the first upload's result. If you add a second upload file that only covers a specific route
+      (e.g. a corrected file for just DC07), that newer file's data replaces the old data for that route only — every other route keeps
+      coming from whichever file last covered it. Any route whose actual cycle count / Σ Vehicle / Σ Driver / status differs from what it
+      was in the first upload gets a <b>Changed</b> badge (unaffected routes are labeled <b>No Changed</b>) — use the Changed filter chip to
+      isolate them. Rows are sorted with Changed routes first.
+    </div>
+
+    <div id="tableHost4">
+      <div class="empty">Upload both files above, then click "Compare &amp; Breakdown".</div>
+    </div>
+  </div>
+
+  <footer>
+    Rule: Day/Night split = ceil/floor(freq/2), unless one shift has 0 drivers → all cycles fall in the other shift.
+    DRIVER_COST is front-loaded per shift according to DS/NS. DOT = OT_Hour on the cycle where a new driver starts.
+    Truck distribution is a proportional estimate — always review manually before export.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let summaryRows = null;
+let uploadRows  = null;
+let uploadByKey = {};
+let uploadHeader = ['PROD_MONTH','ROUTE_CD','CURRENT_LP','TOTAL_DISTANCE','CYCLE_NO','VEHICLE_COST','DRIVER_COST','DOT','HOT_DAYS','HOT_HOURS','SHIFT_LP'];
+let comparisons = []; // FROZEN: route-summary comparison from the very first "Compare & Breakdown" run (feeds Tab 1 + cards)
+let latestComparisons = []; // recomputed on every run, incl. re-uploads (feeds Tab 4 recalculated summary)
+let hasRunOnce = false;
+let gridRows = [];
+let prodMonth = '072026';
+let statusFilter1 = 'all';
+
+function key(route, lp){ return route + '||' + lp; }
+
+function switchTab(n){
+  $('tabPane1').classList.toggle('active', n===1);
+  $('tabPane2').classList.toggle('active', n===2);
+  $('tabPane3').classList.toggle('active', n===3);
+  $('tabPane4').classList.toggle('active', n===4);
+  $('tabBtn1').classList.toggle('active', n===1);
+  $('tabBtn2').classList.toggle('active', n===2);
+  $('tabBtn3').classList.toggle('active', n===3);
+  $('tabBtn4').classList.toggle('active', n===4);
+}
+
+function readWorkbook(file, cb){
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+    cb(wb);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ---------- dynamic upload zones (multiple Upload ELIPS files can be added) ----------
+let uploadFiles = []; // [{id, name, rows}]
+let zoneCounter = 0;
+
+function addUploadZone(){
+  const id = zoneCounter++;
+  const zone = document.createElement('div');
+  zone.className = 'upload-zone';
+  zone.id = 'zone-'+id;
+  zone.innerHTML = `
+    <div class="zone-head">
+      <span class="zone-title">Upload file #${id+1}</span>
+      <button type="button" class="zone-remove" onclick="removeUploadZone(${id})">Remove</button>
+    </div>
+    <div class="fname" id="zfname-${id}">No file selected</div>
+    <input type="file" id="zfile-${id}" accept=".xlsx,.xls">
+    <div class="stat" id="zstat-${id}"></div>
+  `;
+  $('uploadZones').appendChild(zone);
+  document.getElementById('zfile-'+id).addEventListener('change', (e) => {
+    const f = e.target.files[0]; if(!f) return;
+    document.getElementById('zfname-'+id).textContent = f.name;
+    readWorkbook(f, (wb) => {
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+      uploadHeader = rows[0].filter(h => h!=null);
+      const parsed = [];
+      for(let i=1;i<rows.length;i++){
+        const r = rows[i];
+        if(!r || r[1]==null || r[1]==='') continue;
+        const route = String(r[1]).trim();
+        const lp = String(r[2]).trim();
+        parsed.push({PROD_MONTH:r[0], ROUTE_CD:route, CURRENT_LP:lp, TOTAL_DISTANCE:r[3],
+                     CYCLE_NO:r[4], VEHICLE_COST:Number(r[5])||0, DRIVER_COST:Number(r[6])||0,
+                     DOT:r[7], HOT_DAYS:r[8], HOT_HOURS:r[9], SHIFT_LP:r[10]});
+      }
+      const existingEntry = uploadFiles.find(u => u.id===id);
+      if(existingEntry) existingEntry.rows = parsed; else uploadFiles.push({id, name:f.name, rows:parsed});
+      document.getElementById('zstat-'+id).textContent = `${parsed.length} cycle rows`;
+      document.getElementById('zone-'+id).classList.add('filled');
+      rebuildUploadData();
+      checkReady();
+    });
+  });
+}
+
+function removeUploadZone(id){
+  uploadFiles = uploadFiles.filter(u => u.id !== id);
+  const el = $('zone-'+id);
+  if(el) el.remove();
+  if(document.querySelectorAll('.upload-zone').length === 0) addUploadZone();
+  rebuildUploadData();
+  checkReady();
+}
+
+function rebuildUploadData(){
+  uploadRows = [];
+  uploadByKey = {};
+  // If a route+LP appears in more than one upload zone, the most recently added zone
+  // (highest zone id) wins for that route — its rows replace earlier zones' rows for
+  // that route entirely, instead of being appended on top of them. Other routes not
+  // touched by the newer zone keep coming from whichever zone last had them.
+  const ownerZoneForKey = {};
+  uploadFiles.forEach(u => {
+    u.rows.forEach(obj => {
+      const k = key(obj.ROUTE_CD, obj.CURRENT_LP);
+      if(ownerZoneForKey[k] === undefined || u.id > ownerZoneForKey[k]) ownerZoneForKey[k] = u.id;
+    });
+  });
+  uploadFiles.forEach(u => {
+    u.rows.forEach(obj => {
+      const k = key(obj.ROUTE_CD, obj.CURRENT_LP);
+      if(ownerZoneForKey[k] !== u.id) return;
+      uploadRows.push(obj);
+      (uploadByKey[k] = uploadByKey[k] || []).push(obj);
+      if(obj.PROD_MONTH) prodMonth = String(obj.PROD_MONTH);
+    });
+  });
+  const filesLoaded = uploadFiles.filter(u => u.rows && u.rows.length).length;
+  $('statUploadTotal').textContent = filesLoaded
+    ? `${filesLoaded} file(s) merged (newer file wins per route on overlap) · ${uploadRows.length} total cycle rows · ${Object.keys(uploadByKey).length} unique routes`
+    : '';
+}
+
+$('btnAddUpload').addEventListener('click', addUploadZone);
+addUploadZone(); // start with one zone
+
+$('fileSummary').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  $('fnameSummary').textContent = f.name;
+  readWorkbook(f, (wb) => {
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    summaryRows = [];
+    for(let i=3; i<rows.length; i++){
+      const r = rows[i];
+      if(!r || r[3] == null || r[3]==='') continue;
+      summaryRows.push({
+        no:r[0], plant:r[1], lp:r[2], route:String(r[3]).trim(),
+        freq:Number(r[4])||0, truckQty:Number(r[5])||0, driverQty:Number(r[6])||0,
+        ds:Number(r[7])||0, ns:Number(r[8])||0, dist:r[9], toll:r[10], ot:r[11]
+      });
+    }
+    $('statSummary').textContent = `${summaryRows.length} routes loaded`;
+    $('dropSummary').classList.add('filled');
+    checkReady();
+  });
+});
+
+
+function checkReady(){ $('btnRun').disabled = !(summaryRows && uploadRows); }
+
+// ---------- breakdown logic (derived rules, verified against real data) ----------
+function splitDayNight(freq, ds, ns){
+  if(ns === 0) return {day:freq, night:0};
+  if(ds === 0) return {day:0, night:freq};
+  return {day:Math.ceil(freq/2), night:Math.floor(freq/2)};
+}
+function frontLoad(size, count){
+  const arr = new Array(size).fill(0);
+  for(let i=0;i<Math.min(count,size);i++) arr[i]=1;
+  return arr;
+}
+function proportionalSplit(total, day, night){
+  const freq = day+night;
+  if(freq===0) return {day:0, night:0};
+  let td = Math.round(total * day/freq);
+  td = Math.min(td, day);
+  let tn = total - td;
+  if(tn > night){ tn = night; td = total - tn; }
+  if(td < 0) td = 0;
+  return {day:td, night:tn};
+}
+function generateBreakdown(row){
+  const {day, night} = splitDayNight(row.freq, row.ds, row.ns);
+  const truckSplit = proportionalSplit(row.truckQty, day, night);
+  const driverDayFlags = frontLoad(day, row.ds);
+  const driverNightFlags = frontLoad(night, row.ns);
+  const truckDayFlags = frontLoad(day, truckSplit.day);
+  const truckNightFlags = frontLoad(night, truckSplit.night);
+  const cycles = [];
+  for(let i=0;i<day;i++){
+    cycles.push({cycle:i+1, shift:'D', veh:truckDayFlags[i], drv:driverDayFlags[i],
+      dot: driverDayFlags[i] ? (Number(row.ot)||0).toFixed(2) : '0.00'});
+  }
+  for(let i=0;i<night;i++){
+    cycles.push({cycle:day+i+1, shift:'N', veh:truckNightFlags[i], drv:driverNightFlags[i],
+      dot: driverNightFlags[i] ? (Number(row.ot)||0).toFixed(2) : '0.00'});
+  }
+  return cycles;
+}
+
+// ---------- comparison ----------
+function runComparison(){
+  // Carry forward manual checkbox/dist/hot edits for routes that are still "missing" from one
+  // re-upload to the next, so re-running Compare & Breakdown for an unrelated route doesn't
+  // silently reset edits made in Recalculated Summary for routes nothing new was uploaded for.
+  const prevLatest = latestComparisons;
+  const newComparisons = summaryRows.map((row, idx) => {
+    const k = key(row.route, row.lp);
+    const existing = uploadByKey[k];
+    if(!existing){
+      const prev = prevLatest[idx];
+      if(prev && prev.status === 'missing'){
+        return {row, status:'missing', existing:null, generated: prev.generated.map(cy => ({...cy})), dist: prev.dist, hot: prev.hot};
+      }
+      return {row, status:'missing', existing:null, generated:generateBreakdown(row), dist:'', hot:''};
+    }
+    const cycles = existing.length;
+    const sumVeh = existing.reduce((s,r)=>s+(Number(r.VEHICLE_COST)||0),0);
+    const sumDrv = existing.reduce((s,r)=>s+(Number(r.DRIVER_COST)||0),0);
+    const ok = (cycles===row.freq && sumVeh===row.truckQty && sumDrv===row.driverQty);
+    return {row, status: ok ? 'match':'mismatch', existing, cycles, sumVeh, sumDrv};
+  });
+  latestComparisons = newComparisons;
+  buildGridRows();
+  populateLPFilters();
+
+  const isFirstRun = !hasRunOnce;
+  if(isFirstRun){
+    hasRunOnce = true;
+    comparisons = newComparisons;
+    statusFilter1 = 'all';
+    document.querySelectorAll('[data-group="1"] .chip').forEach(ch => ch.classList.toggle('active', ch.dataset.status==='all'));
+    renderCards();
+    renderRouteGrid('1');
+  } else {
+    $('rerunNote').style.display = 'flex';
+    $('rerunNote').innerHTML = `<span class="note-icon">↻</span><div><b>Re-upload detected.</b> The <b>Route Summary</b> tab and cards above keep showing the
+      results from the first "Compare &amp; Breakdown" run and won't change. Updated totals from this re-upload are in the
+      <b>Recalculated Summary</b> tab.</div>`;
+  }
+  renderTab2();
+  renderTab3();
+  renderTab4();
+  $('btnExport').disabled = false;
+}
+
+// Tab 2 is pure Upload-file data — no comparison, no auto-generated rows
+function buildGridRows(){
+  gridRows = uploadRows.map(cy => ({
+    PROD_MONTH: cy.PROD_MONTH ?? prodMonth, ROUTE_CD: cy.ROUTE_CD, CURRENT_LP: cy.CURRENT_LP,
+    TOTAL_DISTANCE: cy.TOTAL_DISTANCE, CYCLE_NO: cy.CYCLE_NO,
+    VEHICLE_COST: cy.VEHICLE_COST, DRIVER_COST: cy.DRIVER_COST, DOT: cy.DOT,
+    HOT_DAYS: cy.HOT_DAYS, HOT_HOURS: cy.HOT_HOURS, SHIFT_LP: cy.SHIFT_LP
+  }));
+}
+
+function populateLPFilters(){
+  const lps1 = [...new Set(comparisons.map(c => c.row.lp))].sort();
+  const cur1 = $('filterLP1').value;
+  $('filterLP1').innerHTML = '<option value="">All LP</option>' + lps1.map(lp => `<option value="${lp}">${lp}</option>`).join('');
+  if(lps1.includes(cur1)) $('filterLP1').value = cur1;
+
+  const lps2 = [...new Set(uploadRows.map(r => r.CURRENT_LP))].sort();
+  const cur2 = $('filterLP2').value;
+  $('filterLP2').innerHTML = '<option value="">All LP</option>' + lps2.map(lp => `<option value="${lp}">${lp}</option>`).join('');
+  if(lps2.includes(cur2)) $('filterLP2').value = cur2;
+
+  const lps4 = [...new Set(latestComparisons.map(c => c.row.lp))].sort();
+  const cur4 = $('filterLP4').value;
+  $('filterLP4').innerHTML = '<option value="">All LP</option>' + lps4.map(lp => `<option value="${lp}">${lp}</option>`).join('');
+  if(lps4.includes(cur4)) $('filterLP4').value = cur4;
+}
+
+function renderCards(){
+  const nMatch = comparisons.filter(c=>c.status==='match').length;
+  const nMismatch = comparisons.filter(c=>c.status==='mismatch').length;
+  const nMissing = comparisons.filter(c=>c.status==='missing').length;
+  $('cards').innerHTML = `
+    <div class="card"><div class="n">${comparisons.length}</div><div class="l">Total routes</div></div>
+    <div class="card ok"><div class="n">${nMatch}</div><div class="l">Match</div></div>
+    <div class="card bad"><div class="n">${nMismatch}</div><div class="l">Mismatch</div></div>
+    <div class="card warn"><div class="n">${nMissing}</div><div class="l">Missing from Upload</div></div>
+  `;
+}
+
+/* ==================== TAB 1 + TAB 4: ROUTE SUMMARY GRID (view '1' = frozen first upload, view '4' = latest upload) ==================== */
+const routeViewConfig = {
+  '1': { getComps: () => comparisons, tableHost:'tableHost1', filterCount:'filterCount1', searchId:'searchRoute1', lpFilterId:'filterLP1' },
+  '4': { getComps: () => latestComparisons, tableHost:'tableHost4', filterCount:'filterCount4', searchId:'searchRoute4', lpFilterId:'filterLP4' }
+};
+let statusFilterByView = {'1':'all', '4':'all'};
+
+function actualFigures(c){
+  if(c.status === 'missing'){
+    return { cyc: c.generated.length, truck: c.generated.reduce((s,x)=>s+x.veh,0), driver: c.generated.reduce((s,x)=>s+x.drv,0) };
+  }
+  return { cyc: c.cycles, truck: c.sumVeh, driver: c.sumDrv };
+}
+
+function isChangedFromInitial(idx, c){
+  const initial = comparisons[idx];
+  if(!initial || initial === c) return false;
+  const a = actualFigures(initial), b = actualFigures(c);
+  return initial.status !== c.status || a.cyc !== b.cyc || a.truck !== b.truck || a.driver !== b.driver;
+}
+
+function passesFilterView(view, c, idx){
+  const cfg = routeViewConfig[view];
+  const term = $(cfg.searchId).value.trim().toLowerCase();
+  const lp = $(cfg.lpFilterId).value;
+  if(term && !c.row.route.toLowerCase().includes(term)) return false;
+  if(lp && c.row.lp !== lp) return false;
+  const filter = statusFilterByView[view];
+  if(filter === 'changed'){
+    if(!isChangedFromInitial(idx, c)) return false;
+  } else if(filter !== 'all' && c.status !== filter){
+    return false;
+  }
+  return true;
+}
+
+function computeBadgeHtml(view, idx, c){
+  if(view === '4'){
+    let badge = c.status==='missing' ? '<span class="badge missing">Missing</span>' : '';
+    badge += (badge ? ' ' : '') + (isChangedFromInitial(idx, c)
+      ? '<span class="badge changed">Changed</span>'
+      : '<span class="badge no-changed">No Changed</span>');
+    return badge;
+  }
+  return c.status==='match' ? '<span class="badge match">Match</span>'
+       : c.status==='mismatch' ? '<span class="badge mismatch">Mismatch</span>'
+       : '<span class="badge missing">Missing</span>';
+}
+
+function sortedIndicesForView(view, comps){
+  const order = comps.map((_, i) => i);
+  if(view !== '4') return order;
+  return order.sort((a, b) => {
+    const changedA = isChangedFromInitial(a, comps[a]) ? 0 : 1;
+    const changedB = isChangedFromInitial(b, comps[b]) ? 0 : 1;
+    if(changedA !== changedB) return changedA - changedB;
+    return a - b;
+  });
+}
+
+function renderRouteGrid(view){
+  const cfg = routeViewConfig[view];
+  const comps = cfg.getComps();
+  $('legend'+view).style.display = 'block';
+  $('filterBar'+view).style.display = 'flex';
+
+  const showFreq = view === '1';
+  const colCount = showFreq ? 12 : 11;
+  let html = `<table class="main"><thead><tr>
+    <th>No</th><th>Plant</th><th>LP</th><th>Route</th>
+    ${showFreq ? '<th class="num">Del Freq</th>' : ''}<th class="num">Upload Cycles</th>
+    <th class="num" title="Sum of VEHICLE_COST flags across the route's cycle rows">Ttl Calcu Upload Truck</th><th class="num">Truck Qty</th>
+    <th class="num" title="Sum of DRIVER_COST flags across the route's cycle rows">Ttl Calcu Upload Driver</th><th class="num">Driver Qty</th>
+    <th>Status</th><th></th>
+  </tr></thead><tbody>`;
+
+  const order = sortedIndicesForView(view, comps);
+  order.forEach(idx => {
+    const c = comps[idx];
+    const r = c.row;
+    const badge = computeBadgeHtml(view, idx, c);
+    const cyc = c.status==='missing' ? r.freq : c.cycles;
+    const sv = c.status==='missing' ? '—' : c.sumVeh;
+    const sd = c.status==='missing' ? '—' : c.sumDrv;
+    const hidden = passesFilterView(view, c, idx) ? '' : ' is-hidden';
+
+    html += `<tr class="data-row${hidden}" id="row${view}-${idx}">
+      <td class="num">${r.no}</td><td>${r.plant}</td><td>${r.lp}</td>
+      <td class="route-cell">${r.route}</td>
+      ${showFreq ? `<td class="num">${r.freq}</td>` : ''}<td class="num">${cyc}</td>
+      <td class="num">${sv}</td><td class="num">${r.truckQty}</td>
+      <td class="num">${sd}</td><td class="num">${r.driverQty}</td>
+      <td id="badge${view}-${idx}">${badge}</td>
+      <td><button class="expand-btn" id="btn${view}-${idx}" onclick="toggleDetailView('${view}',${idx})"><span class="chev">▸</span> View trips</button></td>
+    </tr>`;
+    html += `<tr class="detail-row${hidden}" id="detail${view}-${idx}"><td colspan="${colCount}">${renderDetailView(view, c, idx)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  $(cfg.tableHost).innerHTML = html;
+  updateFilterCountView(view);
+}
+
+function renderDetailView(view, c, idx){
+  const r = c.row;
+  if(c.status === 'match' || c.status === 'mismatch'){
+    let rows = '';
+    (c.existing || []).forEach(cy => {
+      const pillClass = cy.SHIFT_LP==='D' ? 'day' : 'night';
+      rows += `<tr>
+        <td>${cy.PROD_MONTH ?? prodMonth}</td><td>${cy.ROUTE_CD}</td><td>${cy.CURRENT_LP}</td>
+        <td>${cy.TOTAL_DISTANCE ?? ''}</td><td>${cy.CYCLE_NO}</td>
+        <td class="${cy.VEHICLE_COST==1?'cost-1':'cost-0'}">${cy.VEHICLE_COST}</td>
+        <td class="${cy.DRIVER_COST==1?'cost-1':'cost-0'}">${cy.DRIVER_COST}</td>
+        <td>${cy.DOT}</td><td>${cy.HOT_DAYS ?? ''}</td><td>${cy.HOT_HOURS ?? ''}</td>
+        <td><span class="shift-pill ${pillClass}">${cy.SHIFT_LP}</span></td>
+      </tr>`;
+    });
+    const note = c.status==='mismatch'
+      ? `<div class="note tone-bad"><span class="note-icon">⚠</span><div><b>Mismatch</b> — totals in the Upload file don't match the Summary
+         (cycle count ${c.cycles} vs Del Freq ${r.freq}, Σ Vehicle ${c.sumVeh} vs Truck Qty ${r.truckQty}, Σ Driver ${c.sumDrv} vs Driver Qty ${r.driverQty}).</div></div>`
+      : `<div class="note tone-ok"><span class="note-icon">✓</span><div>Actual trip list from the Upload file — already matches the Summary, no changes needed.</div></div>`;
+    return `<div class="detail-card">${note}<div class="cyc-wrap"><table class="cyc">
+      <thead><tr><th>PROD_MONTH</th><th>ROUTE_CD</th><th>CURRENT_LP</th><th>TOTAL_DISTANCE</th><th>CYCLE_NO</th><th>VEHICLE_COST</th><th>DRIVER_COST</th><th>DOT</th><th>HOT_DAYS</th><th>HOT_HOURS</th><th>SHIFT_LP</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+  }
+  let rows = '';
+  c.generated.forEach((cy, ci) => {
+    const pillClass = cy.shift==='D' ? 'day' : 'night';
+    rows += `<tr>
+      <td>${prodMonth}</td><td>${r.route}</td><td>${r.lp}</td>
+      <td>${ci===0 ? `<input type="text" id="dist${view}-${idx}" placeholder="e.g. 66,000" value="${c.dist||''}" onchange="setMetaView('${view}',${idx},'dist',this.value)">` : ''}</td>
+      <td>${cy.cycle}</td>
+      <td><input type="checkbox" data-view="${view}" data-idx="${idx}" data-ci="${ci}" data-field="veh" ${cy.veh?'checked':''} onchange="toggleFlag(this)"></td>
+      <td><input type="checkbox" data-view="${view}" data-idx="${idx}" data-ci="${ci}" data-field="drv" ${cy.drv?'checked':''} onchange="toggleFlag(this)"></td>
+      <td>${cy.dot}</td><td>0.00</td>
+      <td>${ci===0 ? `<input type="text" id="hot${view}-${idx}" placeholder="e.g. 3.50" value="${c.hot||''}" onchange="setMetaView('${view}',${idx},'hot',this.value)">` : ''}</td>
+      <td><span class="shift-pill ${pillClass}">${cy.shift}</span></td>
+    </tr>`;
+  });
+  return `<div class="detail-card">
+    <div class="note tone-bad"><span class="note-icon">⚠</span><div><b>Not yet in the Upload file.</b> Breakdown of ${r.freq} cycles auto-generated
+    (day/night split, driver front-load per shift, DOT = OT_Hour on the cycle where a new driver starts). Per-cycle truck distribution
+    is a <b>proportional estimate</b> — the total already matches the Summary's Truck Qty (${r.truckQty}), but please
+    check/adjust the checkboxes to match the actual truck schedule before exporting. TOTAL_DISTANCE and HOT_HOURS
+    aren't available in the Summary file — enter them manually on the first row.</div></div>
+    <div class="cyc-wrap"><table class="cyc">
+      <thead><tr><th>PROD_MONTH</th><th>ROUTE_CD</th><th>CURRENT_LP</th><th>TOTAL_DISTANCE</th><th>CYCLE_NO</th><th>VEHICLE_COST</th><th>DRIVER_COST</th><th>DOT</th><th>HOT_DAYS</th><th>HOT_HOURS</th><th>SHIFT_LP</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="sum-check" id="check${view}-${idx}"></div>
+  </div>`;
+}
+
+function toggleDetailView(view, idx){
+  const el = $('detail'+view+'-'+idx);
+  el.classList.toggle('open');
+  const isOpen = el.classList.contains('open');
+  $('btn'+view+'-'+idx).classList.toggle('is-open', isOpen);
+  $('row'+view+'-'+idx).classList.toggle('is-open', isOpen);
+  if(isOpen) updateCheckView(view, idx);
+}
+
+function toggleFlag(input){
+  const view = input.dataset.view;
+  const idx = Number(input.dataset.idx), ci = Number(input.dataset.ci), field = input.dataset.field;
+  const c = routeViewConfig[view].getComps()[idx];
+  c.generated[ci][field] = input.checked ? 1 : 0;
+  updateCheckView(view, idx);
+  if(view === '1') renderTab4();
+  else {
+    const badgeCell = $('badge'+view+'-'+idx);
+    if(badgeCell) badgeCell.innerHTML = computeBadgeHtml(view, idx, c);
+  }
+}
+
+function setMetaView(view, idx, field, value){
+  routeViewConfig[view].getComps()[idx][field] = value;
+}
+
+function updateCheckView(view, idx){
+  const c = routeViewConfig[view].getComps()[idx];
+  if(c.status!=='missing') return;
+  const sv = c.generated.reduce((s,x)=>s+x.veh,0);
+  const sd = c.generated.reduce((s,x)=>s+x.drv,0);
+  const el = $('check'+view+'-'+idx);
+  if(!el) return;
+  const ok = sv===c.row.truckQty && sd===c.row.driverQty;
+  el.className = 'sum-check ' + (ok?'ok':'bad');
+  el.textContent = `Σ Vehicle=${sv} (target ${c.row.truckQty})  ·  Σ Driver=${sd} (target ${c.row.driverQty})  ${ok?'✓ matches':'✗ not matching yet, adjust checkboxes'}`;
+}
+
+function updateFilterCountView(view){
+  const cfg = routeViewConfig[view];
+  const comps = cfg.getComps();
+  const visible = comps.filter((c, idx) => passesFilterView(view, c, idx)).length;
+  $(cfg.filterCount).textContent = `Showing ${visible} of ${comps.length} routes`;
+}
+
+function applyFiltersView(view){
+  const comps = routeViewConfig[view].getComps();
+  comps.forEach((c, idx) => {
+    const show = passesFilterView(view, c, idx);
+    $('row'+view+'-'+idx).classList.toggle('is-hidden', !show);
+    $('detail'+view+'-'+idx).classList.toggle('is-hidden', !show);
+  });
+  updateFilterCountView(view);
+}
+
+['1','4'].forEach(view => {
+  const cfg = routeViewConfig[view];
+  $(cfg.searchId).addEventListener('input', () => applyFiltersView(view));
+  $(cfg.lpFilterId).addEventListener('change', () => applyFiltersView(view));
+  $('btnClearFilter'+view).addEventListener('click', () => {
+    $(cfg.searchId).value = ''; $(cfg.lpFilterId).value = '';
+    statusFilterByView[view] = 'all';
+    document.querySelectorAll(`[data-group="${view}"] .chip`).forEach(ch => ch.classList.toggle('active', ch.dataset.status==='all'));
+    applyFiltersView(view);
+  });
+});
+document.addEventListener('click', (e) => {
+  ['1','4'].forEach(view => {
+    if(e.target.closest(`[data-group="${view}"]`) && e.target.matches('.chip')){
+      statusFilterByView[view] = e.target.dataset.status;
+      document.querySelectorAll(`[data-group="${view}"] .chip`).forEach(ch => ch.classList.toggle('active', ch===e.target));
+      applyFiltersView(view);
+    }
+  });
+});
+
+/* ==================== TAB 2: CYCLE GRID (pure Upload-file data) ==================== */
+function passesFilter2(g){
+  const routeTerm = $('searchRoute2').value.trim().toLowerCase();
+  const cycleTerm = $('searchCycle2').value.trim();
+  const lp = $('filterLP2').value;
+  if(routeTerm && !String(g.ROUTE_CD).toLowerCase().includes(routeTerm)) return false;
+  if(cycleTerm && String(g.CYCLE_NO) !== cycleTerm) return false;
+  if(lp && g.CURRENT_LP !== lp) return false;
+  return true;
+}
+
+function renderTab2(){
+  $('legend2').style.display = 'block';
+  $('filterBar2').style.display = 'flex';
+
+  let html = `<div class="grid-wrap"><table class="grid"><thead><tr>
+    <th>PROD_MONTH</th><th>ROUTE_CD</th><th>CURRENT_LP</th><th>TOTAL_DISTANCE</th><th>CYCLE_NO</th>
+    <th title="1 = a new truck is introduced on this cycle.">VEHICLE_COST</th>
+    <th title="1 = a new driver starts on this cycle.">DRIVER_COST</th>
+    <th title="Overtime hours applied on the cycle where a new driver starts (0 otherwise).">DOT</th>
+    <th>HOT_DAYS</th><th>HOT_HOURS</th><th>SHIFT_LP</th>
+  </tr></thead><tbody>`;
+
+  gridRows.forEach((g, gi) => {
+    const hidden = passesFilter2(g) ? '' : ' is-hidden';
+    const pillClass = g.SHIFT_LP==='D' ? 'day' : 'night';
+    html += `<tr id="grow-${gi}"${hidden ? ' class="is-hidden"' : ''}>
+      <td>${g.PROD_MONTH}</td>
+      <td class="left">${g.ROUTE_CD}</td>
+      <td>${g.CURRENT_LP}</td>
+      <td>${g.TOTAL_DISTANCE ?? ''}</td>
+      <td>${g.CYCLE_NO}</td>
+      <td><span class="${g.VEHICLE_COST==1?'cost-1':'cost-0'}">${g.VEHICLE_COST}</span></td>
+      <td><span class="${g.DRIVER_COST==1?'cost-1':'cost-0'}">${g.DRIVER_COST}</span></td>
+      <td>${g.DOT}</td>
+      <td>${g.HOT_DAYS ?? ''}</td>
+      <td>${g.HOT_HOURS ?? ''}</td>
+      <td><span class="shift-pill ${pillClass}">${g.SHIFT_LP}</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  $('tableHost2').innerHTML = html;
+  updateFilterCount2();
+}
+
+function updateFilterCount2(){
+  const visible = gridRows.filter(passesFilter2).length;
+  $('filterCount2').textContent = `Showing ${visible} of ${gridRows.length} cycle rows`;
+}
+
+function applyFilters2(){
+  gridRows.forEach((g, gi) => {
+    $('grow-'+gi).classList.toggle('is-hidden', !passesFilter2(g));
+  });
+  updateFilterCount2();
+}
+
+$('searchRoute2').addEventListener('input', applyFilters2);
+$('searchCycle2').addEventListener('input', applyFilters2);
+$('filterLP2').addEventListener('change', applyFilters2);
+$('btnClearFilter2').addEventListener('click', () => {
+  $('searchRoute2').value = ''; $('searchCycle2').value = ''; $('filterLP2').value = '';
+  applyFilters2();
+});
+
+$('btnRun').addEventListener('click', runComparison);
+
+/* ==================== TAB 3: LP SUMMARY ==================== */
+function computeLPSummary(){
+  const byLP = {};
+  summaryRows.forEach(row => {
+    const lp = row.lp;
+    if(!byLP[lp]) byLP[lp] = {lp, delivery:0, truck:0, driver:0, routes:0};
+    byLP[lp].delivery += row.freq;
+    byLP[lp].truck += row.truckQty;
+    byLP[lp].driver += row.driverQty;
+    byLP[lp].routes += 1;
+  });
+  return Object.values(byLP).sort((a,b) => b.delivery - a.delivery);
+}
+
+function renderTab3(){
+  $('legend3').style.display = 'block';
+  const data = computeLPSummary();
+  const totalDelivery = data.reduce((s,d)=>s+d.delivery,0);
+  const totalTruck = data.reduce((s,d)=>s+d.truck,0);
+  const totalDriver = data.reduce((s,d)=>s+d.driver,0);
+
+  $('lpSummaryHost').innerHTML = `
+    <table class="lp">
+      <thead><tr><th>LP</th><th>Routes</th><th>Total Delivery (Del Freq)</th><th>Total Truck (Truck Qty)</th><th>Total Driver (Driver Qty)</th></tr></thead>
+      <tbody>
+        ${data.map(d => `<tr><td>${d.lp}</td><td>${d.routes}</td><td>${d.delivery}</td><td>${d.truck}</td><td>${d.driver}</td></tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td>Total</td><td>${data.reduce((s,d)=>s+d.routes,0)}</td><td>${totalDelivery}</td><td>${totalTruck}</td><td>${totalDriver}</td></tr></tfoot>
+    </table>
+  `;
+}
+
+/* ==================== TAB 4: RECALCULATED SUMMARY (same grid as Route Summary, rebuilt from the latest upload) ==================== */
+function renderTab4(){
+  if(!latestComparisons.length) return;
+  renderRouteGrid('4');
+}
+
+// ---------- export (one workbook, 4 sheets — one per menu) ----------
+$('btnExport').addEventListener('click', () => {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Route Summary (frozen first-upload result, same as Tab 1)
+  const routeSummaryRows = [['No','Plant','LP','Route','Del Freq','Upload Cycles','Ttl Calcu Upload Truck','Truck Qty','Ttl Calcu Upload Driver','Driver Qty','Status']];
+  comparisons.forEach(c => {
+    const r = c.row;
+    const cyc = c.status==='missing' ? r.freq : c.cycles;
+    const sv = c.status==='missing' ? '' : c.sumVeh;
+    const sd = c.status==='missing' ? '' : c.sumDrv;
+    const statusText = c.status==='match' ? 'Match' : c.status==='mismatch' ? 'Mismatch' : 'Missing';
+    routeSummaryRows.push([r.no, r.plant, r.lp, r.route, r.freq, cyc, sv, r.truckQty, sd, r.driverQty, statusText]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(routeSummaryRows), 'Route Summary');
+
+  // Sheet 2: Cycle Grid (Upload format) — actual upload rows + generated fill-in for routes still missing
+  const outRows = [uploadHeader];
+  uploadRows.forEach(r => {
+    outRows.push([r.PROD_MONTH, r.ROUTE_CD, r.CURRENT_LP, r.TOTAL_DISTANCE, r.CYCLE_NO,
+                  r.VEHICLE_COST, r.DRIVER_COST, r.DOT, r.HOT_DAYS, r.HOT_HOURS, r.SHIFT_LP]);
+  });
+  latestComparisons.forEach(c => {
+    if(c.status !== 'missing') return;
+    c.generated.forEach(cy => {
+      outRows.push([prodMonth, c.row.route, c.row.lp, c.dist||'', cy.cycle, cy.veh, cy.drv, cy.dot, '0.00', c.hot||'', cy.shift]);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(outRows), 'Cycle Grid (Upload format)');
+
+  // Sheet 3: LP Summary (targets from the Summary file, same as Tab 3)
+  const lpData = computeLPSummary();
+  const lpRows = [['LP','Routes','Total Delivery (Del Freq)','Total Truck (Truck Qty)','Total Driver (Driver Qty)']];
+  lpData.forEach(d => lpRows.push([d.lp, d.routes, d.delivery, d.truck, d.driver]));
+  lpRows.push(['Total', lpData.reduce((s,d)=>s+d.routes,0), lpData.reduce((s,d)=>s+d.delivery,0), lpData.reduce((s,d)=>s+d.truck,0), lpData.reduce((s,d)=>s+d.driver,0)]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lpRows), 'LP Summary');
+
+  // Sheet 4: Recalculated Summary (latest upload, same as Tab 4), sorted Changed-first
+  const recalcRows = [['No','Plant','LP','Route','Upload Cycles','Ttl Calcu Upload Truck','Truck Qty','Ttl Calcu Upload Driver','Driver Qty','Status','Changed']];
+  sortedIndicesForView('4', latestComparisons).forEach(idx => {
+    const c = latestComparisons[idx];
+    const r = c.row;
+    const cyc = c.status==='missing' ? r.freq : c.cycles;
+    const sv = c.status==='missing' ? '' : c.sumVeh;
+    const sd = c.status==='missing' ? '' : c.sumDrv;
+    const statusText = c.status==='missing' ? 'Missing' : '';
+    const changedText = isChangedFromInitial(idx, c) ? 'Changed' : 'No Changed';
+    recalcRows.push([r.no, r.plant, r.lp, r.route, cyc, sv, r.truckQty, sd, r.driverQty, statusText, changedText]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recalcRows), 'Recalculated Summary');
+
+  XLSX.writeFile(wb, 'ELIPS_P07_Export.xlsx');
+});
+</script>
+</body>
+</html>
